@@ -1,0 +1,66 @@
+pipeline {
+    agent any
+    environment {
+        DOCKER_CREDENTIALS_ID = 'dockerhub-access-seungki'
+        GITLAB_CREDENTIALS_ID = 'gitlab-access-seungki'
+        DOCKERHUB_REPO = 'seungkicho/discoveryservice'
+        GITLAB_REPO = 'https://lab.ssafy.com/s11-webmobile1-sub2/S11P12A801.git'
+        BRANCH = 'back/test'
+        DISCOVERY_SERVER_IP = 'i11a801.p.ssafy.io'
+    }
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    git credentialsId: "${GITLAB_CREDENTIALS_ID}", branch: "${BRANCH}", url: "${GITLAB_REPO}"
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                script {
+                    dir('backend/discoveryservice') {
+                        sh 'chmod +x ./gradlew'
+                        sh './gradlew clean build'
+                    }
+                }
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    dir('backend/discoveryservice') {
+                        def app = docker.build("${DOCKERHUB_REPO}:latest")
+                    }
+                }
+            }
+        }
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
+                        docker.image("${DOCKERHUB_REPO}:latest").push()
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sshagent(['ssafy-ec2-ssh']) {
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${DISCOVERY_SERVER_IP} << EOF
+                        echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
+                        docker pull ${DOCKERHUB_REPO}:latest
+                        docker stop discoveryservice || true
+                        docker rm discoveryservice || true
+                        docker run -d --name discoveryservice -p 8761:8761 ${DOCKERHUB_REPO}:latest
+                        docker logout
+EOF
+                        """
+                    }
+                }
+            }
+        }
+    }
+}

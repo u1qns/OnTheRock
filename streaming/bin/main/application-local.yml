@@ -1,0 +1,32 @@
+server:
+  port: 8086
+
+eureka:
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://ontherock.lol:8761/eureka
+  instance:
+    prefer-ip-address: true
+    non-secure-port: 8086
+    hostname: http://ontherock.lol
+    instance-id: ${spring.application.name}:${spring.cloud.client.hostname}:${server.port}
+
+openapi:
+  service:
+    title: streaming-service doc
+    version: 1.0.0
+    url: https://ontherock.lol:8000
+
+springdoc:
+  api-docs:
+    path: /streaming/v3/api-docs
+  swagger-ui:
+    path: /streaming/swagger-ui.html
+
+rabbitmq:
+  url: https://ontherock.lol:8091
+  auth:
+    username: guest
+    password: guest

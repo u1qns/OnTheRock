@@ -1,0 +1,73 @@
+server:
+  port: 9090
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  datasource:
+    url: jdbc:h2:file:~/testdb
+    driver-class-name: org.h2.Driver
+    username: ssafy
+    password: admin
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/contents
+    redis:
+      port: 6379
+      database: 2
+      host: i11a801.p.ssafy.io
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.H2Dialect
+  servlet:
+    multipart:
+      max-request-size: 50MB
+      max-file-size: 50MB
+
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: secret
+      secret-key: secret
+    s3:
+      bucket: chanmin-bucket
+
+eureka:
+  client:
+    fetch-registry: false
+    register-with-eureka: false
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
+openapi:
+  service:
+    title: contents-service doc
+    version: 1.0.0
+    url: http://localhost:8000
+springdoc:
+  api-docs:
+    path: /contents/v3/api-docs
+  swagger-ui:
+    path: /contents/swagger-ui.html
+
+app:
+  report:
+    threshold: 5  # 게시글이 5회 이상 신고되면 조치
+
+rabbitmq:
+  url: http://localhost:15672
+  auth:
+    username: guest
+    password: guest

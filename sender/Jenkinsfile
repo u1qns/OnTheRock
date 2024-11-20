@@ -1,0 +1,67 @@
+pipeline {
+    agent any
+    environment {
+        DOCKER_CREDENTIALS_ID = 'dockerhub-access-seungki'
+        GITLAB_CREDENTIALS_ID = 'gitlab-access-seungki'
+        DOCKERHUB_REPO = 'seungkicho/sender'
+        GITLAB_REPO = 'https://lab.ssafy.com/s11-webmobile1-sub2/S11P12A801.git'
+        BRANCH = 'back/sender'
+        USER_SERVER_IP = 'i11a801.p.ssafy.io'
+        SPRING_PROFILE = 'prod'
+    }
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    git credentialsId: "${GITLAB_CREDENTIALS_ID}", branch: "${BRANCH}", url: "${GITLAB_REPO}"
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                script {
+                    dir('backend/sender') {
+                        sh 'chmod +x ./gradlew'
+                        sh './gradlew clean build -Pprofile=prod'
+                    }
+                }
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    dir('backend/sender') {
+                        def app = docker.build("${DOCKERHUB_REPO}:latest")
+                    }
+                }
+            }
+        }
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
+                        docker.image("${DOCKERHUB_REPO}:latest").push()
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sshagent(['ssafy-ec2-ssh']) {
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${USER_SERVER_IP} << EOF
+                        echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
+                        docker pull ${DOCKERHUB_REPO}:latest
+                        docker stop sender || true
+                        docker rm sender || true
+                        docker run -d --name sender -p 8085:8085 ${DOCKERHUB_REPO}:latest --spring.profiles.active=${SPRING_PROFILE}
+                        docker logout
+EOF
+                        """
+                    }
+                }
+            }
+        }
+    }
+}

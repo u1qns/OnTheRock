@@ -1,0 +1,14 @@
+spring:
+  profiles:
+    active: local
+  data:
+    mongodb:
+      auto-index-creation: true
+
+messages:
+  notification:
+    follow: "{0}님이 당신을 팔로우 했습니다."
+    new_post: "{0}님이 새로운 게시물을 작성했습니다."
+    streaming: "{0}님이 스트리밍을 시작했습니다."
+    comment: "{0}님이 당신의 게시물에 댓글을 남겼습니다."
+    like: "{0}님이 당신의 게시물을 좋아합니다."

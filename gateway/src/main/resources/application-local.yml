@@ -1,0 +1,78 @@
+server:
+  port: 8000
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      default-filters:
+        - name: GlobalFilter
+          args:
+            baseMessage: Spring Cloud Gateway Global Filter
+            preLogger: true
+            postLogger: true
+      routes:
+        - id: user
+          uri: lb://user
+          predicates:
+            - Path=/user/**
+        - id: auth
+          uri: lb://auth
+          predicates:
+            - Path=/auth/**
+        - id: sender
+          uri: lb://sender
+          predicates:
+            - Path=/sender/**
+        - id: contents
+          uri: lb://contents
+          predicates:
+            - Path=/contents/**
+        - id: message
+          uri: lb://message
+          predicates:
+            - Path=/message/**
+        - id: chat
+          uri: lb://chat
+          predicates:
+            - Path=/rooms/**
+        - id: chat-websocket
+          uri: lb:ws://chat
+          predicates:
+            - Path=/ws/**
+            - Header=Upgrade, WebSocket
+        - id: chat-websocket-http
+          uri: lb://chat
+          predicates:
+            - Path=/ws
+jwt:
+  accessKey: ontherockaccesskeyontherockaccesskeyontherockaccesskeyontherockaccesskey
+
+springdoc:
+  enable-native-support: true
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    config-url: /v3/api-docs/swagger-config
+    urls:
+      - url: /v3/api-docs
+        name: API Gateway Service
+      - url: /auth/v3/api-docs
+        name: Auth Service
+      - url: /user/v3/api-docs
+        name: User Service
+      - url: /sender/v3/api-docs
+        name: Notification Service
+      - url: /contents/v3/api-docs
+        name: Contents Service
+      - url: /message/v3/api-docs
+        name: Message Service

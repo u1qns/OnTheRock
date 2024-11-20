@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/chat
+
+eureka:
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
+openapi:
+  service:
+    title: chat-service doc
+    version: 1.0.0
+    url: http://localhost:8000
+springdoc:
+  api-docs:
+    path: /chat/v3/api-docs
+  swagger-ui:
+    path: /chat/swagger-ui.html

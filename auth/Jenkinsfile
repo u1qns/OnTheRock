@@ -1,0 +1,96 @@
+pipeline {
+    agent any
+    environment {
+        DOCKER_CREDENTIALS_ID = 'dockerhub-access-seungki'
+        GITLAB_CREDENTIALS_ID = 'gitlab-access-seungki'
+        DOCKERHUB_REPO = 'seungkicho/auth'
+        GITLAB_REPO = 'https://lab.ssafy.com/s11-webmobile1-sub2/S11P12A801.git'
+        BRANCH = 'back/auth'
+        AUTH_SERVER_IP = 'i11a801.p.ssafy.io'
+        SPRING_PROFILE = 'prod'
+    }
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    git credentialsId: "${GITLAB_CREDENTIALS_ID}", branch: "${BRANCH}", url: "${GITLAB_REPO}"
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                script {
+                    dir('backend/auth') {
+                        sh 'chmod +x ./gradlew'
+                        sh './gradlew clean build -Pprofile=prod'
+                    }
+                }
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    dir('backend/auth') {
+                        def app = docker.build("${DOCKERHUB_REPO}:latest")
+                    }
+                }
+            }
+        }
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
+                        docker.image("${DOCKERHUB_REPO}:latest").push()
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sshagent(['ssafy-ec2-ssh']) {
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${AUTH_SERVER_IP} << EOF
+                        echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
+                        docker pull ${DOCKERHUB_REPO}:latest
+                        docker stop auth || true
+                        docker rm auth || true
+                        docker run -d --name auth -p 8082:8082 ${DOCKERHUB_REPO}:latest --spring.profiles.active=${SPRING_PROFILE}
+                        docker logout
+EOF
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // 빌드 완료 후 정리 작업
+            sh 'docker system prune -af'
+        }
+        success {
+            script {
+                def Author_ID = sh(script: "git show -s --pretty=%an", returnStdout: true).trim()
+                def Author_Name = sh(script: "git show -s --pretty=%ae", returnStdout: true).trim()
+                mattermostSend (color: 'good',
+                message: "빌드 성공 :---::good_good_cat::---: : ${env.JOB_NAME} #${env.BUILD_NUMBER} by ${Author_ID} (<${env.BUILD_URL}|Details>)",
+                endpoint: 'https://meeting.ssafy.com/hooks/yza83hn9sp8qic7fqfiadq58hw',
+                channel: 'A801_jenkins'
+                )
+            }
+        }
+        failure {
+            script {
+                def Author_ID = sh(script: "git show -s --pretty=%an", returnStdout: true).trim()
+                def Author_Name = sh(script: "git show -s --pretty=%ae", returnStdout: true).trim()
+                mattermostSend (color: 'danger',
+                message: "빌드 실패 :---::cryingpatamon::---: : ${env.JOB_NAME} #${env.BUILD_NUMBER} by ${Author_ID} (<${env.BUILD_URL}|Details>)",
+                endpoint: 'https://meeting.ssafy.com/hooks/yza83hn9sp8qic7fqfiadq58hw',
+                channel: 'A801_jenkins'
+                )
+            }
+        }
+    }
+}

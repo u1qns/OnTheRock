@@ -1,0 +1,45 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:~/testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  h2:
+    console:
+      enabled: true
+  jpa:
+
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+eureka:
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
+server:
+  servlet:
+    context-path: /
+  port: 8083
+
+openapi:
+  service:
+    title: user-service doc
+    version: 1.0.0
+    url: http://localhost:8000
+springdoc:
+  api-docs:
+    path: /user/v3/api-docs
+  swagger-ui:
+    path: /user/swagger-ui.html
+
+rabbitmq:
+  url: http://localhost:15672
+  auth:
+    username: guest
+    password: guest

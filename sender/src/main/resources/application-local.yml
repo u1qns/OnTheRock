@@ -1,0 +1,29 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/sender
+eureka:
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    non-secure-port: 8085
+    instance-id: ${spring.application.name}:${spring.cloud.client.hostname}:${server.port}
+
+server:
+  servlet:
+    context-path: /
+  port: 8085
+
+openapi:
+  service:
+    title: sender-service doc
+    version: 1.0.0
+    url: http://localhost:8000
+springdoc:
+  api-docs:
+    path: /sender/v3/api-docs
+  swagger-ui:
+    path: /sender/swagger-ui.html

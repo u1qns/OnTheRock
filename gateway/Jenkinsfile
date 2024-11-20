@@ -1,0 +1,93 @@
+pipeline {
+    agent any
+    environment {
+        DOCKER_CREDENTIALS_ID = 'dockerhub-access-seungki'
+        GITLAB_CREDENTIALS_ID = 'gitlab-access-seungki'
+        DOCKERHUB_REPO = 'seungkicho/gateway'
+        GITLAB_REPO = 'https://lab.ssafy.com/s11-webmobile1-sub2/S11P12A801.git'
+        BRANCH = 'back/gateway'
+        GATEWAY_SERVER_IP = 'i11a801.p.ssafy.io'
+        SPRING_PROFILE = 'prod'
+    }
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    git credentialsId: "${GITLAB_CREDENTIALS_ID}", branch: "${BRANCH}", url: "${GITLAB_REPO}"
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                script {
+                    dir('backend/gateway') {
+                        sh 'chmod +x ./gradlew'
+                        sh './gradlew clean build -Pprofile=prod'
+                    }
+                }
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    dir('backend/gateway') {
+                        def app = docker.build("${DOCKERHUB_REPO}:latest")
+                    }
+                }
+            }
+        }
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
+                        docker.image("${DOCKERHUB_REPO}:latest").push()
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sshagent(['ssafy-ec2-ssh']) {
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${GATEWAY_SERVER_IP} << EOF
+                        echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
+                        docker pull ${DOCKERHUB_REPO}:latest
+                        docker stop gateway || true
+                        docker rm gateway || true
+                        docker run -d --name gateway -p 8000:8000 \
+                          -v /etc/letsencrypt/live/ontherock.lol/keystore.p12:/certs/keystore.p12:ro \
+                          ${DOCKERHUB_REPO}:latest --spring.config.additional-location=file:/etc/ssl/certs/ --spring.profiles.active=${SPRING_PROFILE}
+                        docker logout
+EOF
+                        """
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success {
+            script {
+                def Author_ID = sh(script: "git show -s --pretty=%an", returnStdout: true).trim()
+                def Author_Name = sh(script: "git show -s --pretty=%ae", returnStdout: true).trim()
+                mattermostSend (color: 'good',
+                message: "빌드 성공 :subinzoomin: : ${env.JOB_NAME} #${env.BUILD_NUMBER} by ${Author_ID}(${Author_Name})\n(<${env.BUILD_URL}|Details>)",
+                endpoint: 'https://meeting.ssafy.com/hooks/yza83hn9sp8qic7fqfiadq58hw',
+                channel: 'A801_jenkins'
+                )
+            }
+        }
+        failure {
+            script {
+                def Author_ID = sh(script: "git show -s --pretty=%an", returnStdout: true).trim()
+                def Author_Name = sh(script: "git show -s --pretty=%ae", returnStdout: true).trim()
+                mattermostSend (color: 'danger',
+                message: "빌드 실패 :chanminzoomin: : ${env.JOB_NAME} #${env.BUILD_NUMBER} by ${Author_ID}(${Author_Name})\n(<${env.BUILD_URL}|Details>)",
+                endpoint: 'https://meeting.ssafy.com/hooks/yza83hn9sp8qic7fqfiadq58hw',
+                channel: 'A801_jenkins'
+                )
+            }
+        }
+    }
+}

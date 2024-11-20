@@ -1,0 +1,53 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          initial-interval: 3s
+          max-interval: 10s
+          max-attempts: 2
+          multiplier: 2
+
+eureka:
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    non-secure-port: 8084
+    instance-id: ${spring.application.name}:${spring.cloud.client.hostname}:${server.port}
+
+server:
+  servlet:
+    context-path: /
+  port: 8084
+
+openapi:
+  service:
+    title: message-service doc
+    version: 1.0.0
+    url: http://localhost:8000
+springdoc:
+  api-docs:
+    path: /message/v3/api-docs
+  swagger-ui:
+    path: /message/swagger-ui.html

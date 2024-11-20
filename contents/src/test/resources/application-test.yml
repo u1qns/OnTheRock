@@ -1,0 +1,51 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.H2Dialect
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/test
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: fakeAccessKey
+      secret-key: fakeSecretKey
+    s3:
+      bucket: fake-bucket
+
+eureka:
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
+openapi:
+  service:
+    title: contents-service doc
+    version: 1.0.0
+    url: http://localhost:8000
+springdoc:
+  api-docs:
+    path: /contents/v3/api-docs
+  swagger-ui:
+    path: /contents/swagger-ui.html
+app:
+  report:
+    threshold: 5  # 게시글이 5회 이상 신고되면 조치
+
+rabbitmq:
+  url: http://localhost:15672
+  auth:
+    username: guest
+    password: guest
